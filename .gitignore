@@ -25,6 +25,7 @@ MANIFEST
 
 # Packages
 .egg/
+.eggs/
 *.egg
 *.egg-info
 dist
