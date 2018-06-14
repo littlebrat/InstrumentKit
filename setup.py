@@ -45,9 +45,11 @@ INSTALL_REQUIRES = [
     "pyusb",
     "ruamel.yaml"
 ]
+
 EXTRAS_REQUIRE = {
-    'VISA': ["pyvisa"]
+    'pyvisa==1.9.0'
 }
+
 
 # HELPER FUNCTONS ############################################################
 
