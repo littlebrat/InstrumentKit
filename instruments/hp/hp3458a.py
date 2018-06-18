@@ -57,17 +57,17 @@ class HP3458a(instruments.generic_hpml.hpml_multimeter.HpmlMultimeter):
     def __init__(self, filelike):
         super().__init__(filelike)
         self.terminator = "\r"
-        self.write('OFORMAT DREAL')
+        #self.write('OFORMAT DREAL')
 
 
 
 
 if __name__ == '__main__':
     multimeter = HP3458a.open_visa('GPIB0::23::INSTR')
-    multimeter.reset()
+
+    # print(multimeter.mode)
 
     # This does not work yet because the getter is not prepared to
-    multimeter.mode = multimeter.Mode.current_dc
-    print(multimeter.measure())
+    #multimeter.mode = multimeter.Mode.current_dc
 
-    #print(multimeter.query('TEMP?'))
+    print(multimeter.measure(multimeter.Mode.current_dc))

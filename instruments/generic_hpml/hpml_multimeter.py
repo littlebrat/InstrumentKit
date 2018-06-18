@@ -13,6 +13,9 @@ from instruments.util_fns import assume_units, enum_property
 from instruments.abstract_instruments import Multimeter
 
 
+def parse_response(response):
+    return response
+
 class HpmlMultimeter(Multimeter):
 
     """
@@ -31,27 +34,47 @@ class HpmlMultimeter(Multimeter):
         """
         Enum of valid measurement modes for HP Multimeter Language
         """
-        current_ac = "ACI"
-        current_dc = "DCI"
-        current_acdc = "ACDCI"
+        current_ac = '7'
+        current_dc = '6'
+        current_acdc = '8'
 
-        voltage_ac = "ACV"
-        voltage_dc = "DCV"
-        voltage_acdc = "ACDCV"
+        voltage_ac = '2'
+        voltage_dc = '1'
+        voltage_acdc = '3'
 
-        frequency = "FREQ"
-        period = "PER"
+        frequency = '9'
+        period = '10'
 
-        fourpt_resistance = "OHMF"
-        resistance = "OHM"
+        fourpt_resistance = '5'
+        resistance = '4'
 
-        temperature = "TEMP"
+        direct_sampling_ac = '11'
+        direct_sampling_dc = '12'
 
-        direct_sampling_ac = "DSAC"
-        direct_sampling_dc = "DSDC"
+        sub_sampling_ac = '13'
+        sub_sampling_dc = '14'
 
-        sub_sampling_ac = "SSAC"
-        sub_sampling_dc = "SSDC"
+    class OutputFormat(enum.Enum):
+        """
+        Designates the GPIB output format for readings sent directly to the controller or transferred
+        from reading memory to the controller.
+        """
+
+        #  ASCII-15 bytes per reading (see 1st and 2nd Remarks below)
+        ascii = 1
+
+        # Single Integer-16 bits 2's complement (2 bytes per reading)
+        sint = 2
+
+        # Double Integer-32 bits 2's complement (4 bytes per reading)
+        dint = 3
+
+        # Single Real-(IEEE-754) 32 bits, (4 bytes per reading)
+        sreal = 4
+
+        # Double Real-(IEEE-754) 64 bits, (8 bytes per reading)
+        dreal = 5
+
 
 
     class TriggerMode(enum.Enum):
@@ -98,7 +121,7 @@ class HpmlMultimeter(Multimeter):
     mode = enum_property(
         command="FUNC",
         enum=Mode,
-        writeonly=True,
+        input_decoration=parse_response,
         doc="""
             Gets/sets the current measurement mode for the multimeter.
 
@@ -238,30 +261,14 @@ class HpmlMultimeter(Multimeter):
         # pylint: disable=no-member
         self.write(mode.value)
         self.trigger()
-        value = self.read(8)
-        return value
-        # return value * UNITS[mode]
 
-    def read(self, size=-1, encoding='IEEE-754/64'):
+        # Should make this a field
+        value = self.read(size=8, encoding='IEEE-754/64')
+
+        return value * UNITS[mode]
+
+    def read(self, size=-1, encoding='utf-8'):
         return super().read(size, encoding)
-
-
-FUNC = {
-    '1': "DCV",
-    '2': "ACV",
-    '3': "ACDCV",
-    '4': "OHM",
-    '5': "OHMF",
-    '6': "DCI",
-    '7': "ACI",
-    '8': "ACDCI",
-    '9': "FREQ",
-    '10': "PER",
-    '11': "DSAC",
-    '12': "DSDC",
-    '13': "SSAC",
-    '14': "SSDC"
-}
 
 
 UNITS = {
@@ -273,6 +280,7 @@ UNITS = {
     HpmlMultimeter.Mode.fourpt_resistance: quantities.ohm,
     HpmlMultimeter.Mode.frequency:   quantities.hertz,
     HpmlMultimeter.Mode.period:      quantities.second,
-    HpmlMultimeter.Mode.temperature: quantities.kelvin,
+    # FIXME
+    # HpmlMultimeter.Mode.temperature: quantities.kelvin,
 }
 
