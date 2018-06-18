@@ -51,6 +51,8 @@ class VisaCommunicator(io.IOBase, AbstractCommunicator):
                 (version >= 160 and isinstance(conn, visa.Resource)):
             self._conn = conn
             self._terminator = "\n"
+            self.read_terminator = '\r'
+
         else:
             raise TypeError("VisaCommunicator must wrap a VISA Instrument.")
 
@@ -92,6 +94,25 @@ class VisaCommunicator(io.IOBase, AbstractCommunicator):
             raise ValueError("Terminator for VisaCommunicator must only be 1 "
                              "character long.")
         self._terminator = newval
+
+    @property
+    def read_terminator(self):
+        """
+        Gets/sets the termination character used for VISA connections
+
+        :type: `str`
+        """
+        return self._conn.read_termination
+
+    @read_terminator.setter
+    def read_terminator(self, newval):
+        if not isinstance(newval, str):
+            raise TypeError("Terminator for VisaCommunicator must be specified "
+                            "as a single character string.")
+        if len(newval) > 1:
+            raise ValueError("Terminator for VisaCommunicator must only be 1 "
+                             "character long.")
+        self._conn.read_termination = newval
 
     @property
     def timeout(self):

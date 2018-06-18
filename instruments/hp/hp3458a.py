@@ -56,8 +56,10 @@ class HP3458a(instruments.generic_hpml.hpml_multimeter.HpmlMultimeter):
 
     def __init__(self, filelike):
         super().__init__(filelike)
-        self.terminator = "\r"
-        #self.write('OFORMAT DREAL')
+        # TODO HOW TO MODIFY READ TERMINATOR
+        #self.read_terminator = '\r'
+        self.write('OFORMAT DREAL')
+        self.write('MFORMAT DREAL')
 
 
 
@@ -68,6 +70,7 @@ if __name__ == '__main__':
     # print(multimeter.mode)
 
     # This does not work yet because the getter is not prepared to
-    #multimeter.mode = multimeter.Mode.current_dc
+    multimeter.mode = multimeter.Mode.current_dc.value
 
-    print(multimeter.measure(multimeter.Mode.current_dc))
+    for _ in range(3):
+        print(multimeter.measure())

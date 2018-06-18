@@ -9,7 +9,7 @@ import struct
 
 
 from instruments.abstract_instruments import Instrument
-from instruments.util_fns import assume_units, enum_property
+from instruments.util_fns import assume_units, enum_property, int_property
 from instruments.abstract_instruments import Multimeter
 
 
@@ -34,25 +34,25 @@ class HpmlMultimeter(Multimeter):
         """
         Enum of valid measurement modes for HP Multimeter Language
         """
-        current_ac = '7'
-        current_dc = '6'
-        current_acdc = '8'
+        current_ac = "7"
+        current_dc = 6
+        current_acdc = "8"
 
-        voltage_ac = '2'
-        voltage_dc = '1'
-        voltage_acdc = '3'
+        voltage_ac = "2"
+        voltage_dc = "1"
+        voltage_acdc = "3"
 
-        frequency = '9'
-        period = '10'
+        frequency = "9"
+        period = "10"
 
-        fourpt_resistance = '5'
-        resistance = '4'
+        fourpt_resistance = "5"
+        resistance = "4"
 
-        direct_sampling_ac = '11'
-        direct_sampling_dc = '12'
+        direct_sampling_ac = "11"
+        direct_sampling_dc = "12"
 
-        sub_sampling_ac = '13'
-        sub_sampling_dc = '14'
+        sub_sampling_ac = "13"
+        sub_sampling_dc = "14"
 
     class OutputFormat(enum.Enum):
         """
@@ -76,6 +76,13 @@ class HpmlMultimeter(Multimeter):
         dreal = 5
 
 
+    class DisplayMode(enum.Enum):
+        """
+        Display modes (ON/OFF)
+        """
+        off = 0
+        on = 1
+
 
     class TriggerMode(enum.Enum):
         """
@@ -84,28 +91,28 @@ class HpmlMultimeter(Multimeter):
         """
         # Used with: TARM, TRIG, NRDGS
         ## Occurs automatically (whenever required)
-        auto = "AUTO"
+        auto = '1'
 
         # Occurs on negative edge transition on the multimeter's external trigger input
-        external = "EXT"
+        external = '2'
 
         # Occurs when the multimeter's output buffer is empty, reading memory is off or empty,
         # and the controller requests data
-        syn = "SYN"
+        syn = '5'
 
         # Used with: TARM, TRIG
         # Occurs once (upon receipt of TARM SGL or TRIG SGL command, then becomes HOLD)
-        single = "SGL"
+        single = '3'
 
         # Suspends measurements
-        hold = "HOLD"
+        hold = '4'
 
         # Used with: TRIG, NRDGS
         ## Occurs when the power line voltage crosses zero volts
-        level = "LEVEL"
+        level = '7'
 
         ## Occurs when the specified voltage is reached on the specified slope of the input signa
-        line = "LINE"
+        line = '8'
 
     class InputRange(enum.Enum):
 
@@ -121,7 +128,8 @@ class HpmlMultimeter(Multimeter):
     mode = enum_property(
         command="FUNC",
         enum=Mode,
-        input_decoration=parse_response,
+        input_decoration=lambda x: HpmlMultimeter._mode_parse(x),
+        set_cmd="FUNC",
         doc="""
             Gets/sets the current measurement mode for the multimeter.
 
@@ -145,6 +153,13 @@ class HpmlMultimeter(Multimeter):
 
                 :type: `~HpmlMultimeter.TriggerMode`
             """)
+
+
+    display = enum_property(
+        command="DISP",
+        enum=DisplayMode,
+    )
+
 
     @property
     def input_range(self):
@@ -255,11 +270,12 @@ class HpmlMultimeter(Multimeter):
         """
         if mode is None:
             mode = self.mode
+        else:
+            self.mode = mode.value
         if not isinstance(mode, HpmlMultimeter.Mode):
             raise TypeError("Mode must be specified as a SCPIMultimeter.Mode "
                             "value, got {} instead.".format(type(mode)))
         # pylint: disable=no-member
-        self.write(mode.value)
         self.trigger()
 
         # Should make this a field
@@ -270,6 +286,21 @@ class HpmlMultimeter(Multimeter):
     def read(self, size=-1, encoding='utf-8'):
         return super().read(size, encoding)
 
+    @staticmethod
+    def _mode_parse(val):
+        """
+        When given a string of the form
+
+        '6, 1.0E-4'
+
+        this function will return just the first component representing the mode
+        the multimeter is currently in.
+
+        :param str val: Input string to be parsed.
+
+        :rtype: `str`
+        """
+        return int(val.split(',')[0])
 
 UNITS = {
     HpmlMultimeter.Mode.voltage_dc:  quantities.volt,
@@ -280,7 +311,5 @@ UNITS = {
     HpmlMultimeter.Mode.fourpt_resistance: quantities.ohm,
     HpmlMultimeter.Mode.frequency:   quantities.hertz,
     HpmlMultimeter.Mode.period:      quantities.second,
-    # FIXME
-    # HpmlMultimeter.Mode.temperature: quantities.kelvin,
 }
 
