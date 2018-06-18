@@ -58,19 +58,20 @@ class HP3458a(instruments.generic_hpml.hpml_multimeter.HpmlMultimeter):
         super().__init__(filelike)
         # TODO HOW TO MODIFY READ TERMINATOR
         #self.read_terminator = '\r'
-        self.write('OFORMAT DREAL')
-        self.write('MFORMAT DREAL')
-
+        self.tarm_mode = self.TriggerMode.hold
+        self.mformat = self.Format.dreal
+        self.oformat = self.Format.dreal
+        self.display = self.ToggableMode.off
+        self.azero = self.ToggableMode.off
+        self.tarm_mode = self.TriggerMode.syn
 
 
 
 if __name__ == '__main__':
     multimeter = HP3458a.open_visa('GPIB0::23::INSTR')
+    multimeter.mode = multimeter.Mode.current_dc
 
-    # print(multimeter.mode)
-
-    # This does not work yet because the getter is not prepared to
-    multimeter.mode = multimeter.Mode.current_dc.value
-
-    for _ in range(3):
-        print(multimeter.measure())
+    import time
+    s = time.time()
+    [multimeter.measure() for _ in range(20)]
+    print((time.time() - s)/ 20)

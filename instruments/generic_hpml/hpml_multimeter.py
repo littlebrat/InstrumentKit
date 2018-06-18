@@ -1,14 +1,10 @@
 """
 Provides support for HPML multimeters
 """
-
-import instruments.abstract_instruments
 import enum
 import quantities
-import struct
 
 
-from instruments.abstract_instruments import Instrument
 from instruments.util_fns import assume_units, enum_property, int_property
 from instruments.abstract_instruments import Multimeter
 
@@ -34,30 +30,30 @@ class HpmlMultimeter(Multimeter):
         """
         Enum of valid measurement modes for HP Multimeter Language
         """
-        current_ac = "7"
+        current_ac = 7
         current_dc = 6
-        current_acdc = "8"
+        current_acdc = 8
 
-        voltage_ac = "2"
-        voltage_dc = "1"
-        voltage_acdc = "3"
+        voltage_ac = 2
+        voltage_dc = 1
+        voltage_acdc = 3
 
-        frequency = "9"
-        period = "10"
+        frequency = 9
+        period = 10
 
-        fourpt_resistance = "5"
-        resistance = "4"
+        fourpt_resistance = 5
+        resistance = 4
 
-        direct_sampling_ac = "11"
-        direct_sampling_dc = "12"
+        direct_sampling_ac = 11
+        direct_sampling_dc = 12
 
-        sub_sampling_ac = "13"
-        sub_sampling_dc = "14"
+        sub_sampling_ac = 13
+        sub_sampling_dc = 14
 
-    class OutputFormat(enum.Enum):
+
+    class Format(enum.Enum):
         """
-        Designates the GPIB output format for readings sent directly to the controller or transferred
-        from reading memory to the controller.
+
         """
 
         #  ASCII-15 bytes per reading (see 1st and 2nd Remarks below)
@@ -76,9 +72,9 @@ class HpmlMultimeter(Multimeter):
         dreal = 5
 
 
-    class DisplayMode(enum.Enum):
+    class ToggableMode(enum.Enum):
         """
-        Display modes (ON/OFF)
+        Toggable modes (ON/OFF)
         """
         off = 0
         on = 1
@@ -91,28 +87,29 @@ class HpmlMultimeter(Multimeter):
         """
         # Used with: TARM, TRIG, NRDGS
         ## Occurs automatically (whenever required)
-        auto = '1'
+        auto = 1
 
         # Occurs on negative edge transition on the multimeter's external trigger input
-        external = '2'
+        external = 2
 
         # Occurs when the multimeter's output buffer is empty, reading memory is off or empty,
         # and the controller requests data
-        syn = '5'
+        syn = 5
 
         # Used with: TARM, TRIG
         # Occurs once (upon receipt of TARM SGL or TRIG SGL command, then becomes HOLD)
-        single = '3'
+        single = 3
 
         # Suspends measurements
-        hold = '4'
+        hold = 4
 
         # Used with: TRIG, NRDGS
         ## Occurs when the power line voltage crosses zero volts
-        level = '7'
+        level = 7
 
         ## Occurs when the specified voltage is reached on the specified slope of the input signa
-        line = '8'
+        line = 8
+
 
     class InputRange(enum.Enum):
 
@@ -129,7 +126,6 @@ class HpmlMultimeter(Multimeter):
         command="FUNC",
         enum=Mode,
         input_decoration=lambda x: HpmlMultimeter._mode_parse(x),
-        set_cmd="FUNC",
         doc="""
             Gets/sets the current measurement mode for the multimeter.
 
@@ -138,12 +134,58 @@ class HpmlMultimeter(Multimeter):
             >>> dmm.mode = dmm.Mode.voltage_dc
 
             :type: `~HpmlMultimeter.Mode`
-            """
-    )
+            """)
+
+    oformat = enum_property(
+        command="OFORMAT",
+        enum=Format,
+        input_decoration=lambda x: int(x),
+        doc="""
+            Gets/sets the output format for the multimeter.
+            Designates the GPIB output format for readings sent directly to the 
+            controller or transferred from reading memory to the controller.
+            
+            Example usage:
+
+            >>> dmm.oformat = dmm.Format.dreal
+
+            :type: `~HpmlMultimeter.Format`
+            """)
+
+    mformat = enum_property(
+        command="MFORMAT",
+        enum=Format,
+        input_decoration=lambda x: int(x),
+        doc="""
+                Gets/sets the memory format for the multimeter.
+                Clears reading memory and designates the storage format for new readings.
+
+                Example usage:
+
+                >>> dmm.mformat = dmm.Format.dreal
+
+                :type: `~HpmlMultimeter.Format`
+                """)
+
+    tarm_mode = enum_property(
+        command="TARM",
+        enum=TriggerMode,
+        input_decoration=lambda x: int(x),
+        doc="""
+                Defines the event that enables (arms) the trigger event (TRIG command). 
+                You can also use this command to perform multiple measurement cycles.
+
+                Example usage:
+
+                >>> dmm.tarm_mode = dmm.TriggerMode.syn
+
+                :type: `~HpmlMultimeter.TriggerMode`
+                """)
 
     trigger_mode = enum_property(
         command="TRIG",
         enum=TriggerMode,
+        input_decoration=lambda x: int(x),
         doc="""
                 Gets/sets the Multimeter trigger mode.
 
@@ -154,12 +196,34 @@ class HpmlMultimeter(Multimeter):
                 :type: `~HpmlMultimeter.TriggerMode`
             """)
 
+    azero = enum_property(
+        command="AZERO",
+        enum=ToggableMode,
+        input_decoration=lambda x: int(x),
+        doc="""
+                Enables or disables the autozero function. The autozero function
+                applies only to DC voltage, DC current, and resistance measurements.
+
+                Example usage:
+
+                >>> dmm.azero = dmm.ToggableMode.off
+
+                :type: `~HpmlMultimeter.ToggableMode`
+            """)
 
     display = enum_property(
         command="DISP",
-        enum=DisplayMode,
-    )
+        enum=ToggableMode,
+        input_decoration=lambda x: int(x),
+        doc="""
+                Turns the display ON/OFF
 
+                Example usage:
+
+                >>> dmm.display = dmm.ToggableMode.off
+
+                :type: `~HpmlMultimeter.ToggableMode`
+            """)
 
     @property
     def input_range(self):
@@ -175,24 +239,11 @@ class HpmlMultimeter(Multimeter):
         :units: As appropriate for the current mode setting.
         :type: `~quantities.Quantity`, or `~HpmlMultimeter.InputRange`
         """
-        value = self.query('RANGE?')
-        mode = self.Mode(self._mode_parse(value))
-        value = value.split(" ")[1].split(",")[0]  # Extract device range
-        try:
-            return float(value) * UNITS[mode]
-        except ValueError:
-            return self.InputRange(value.strip())
+        raise NotImplementedError
 
     @input_range.setter
     def input_range(self, newval):
-        current = self.query("CONF?")
-        mode = self.Mode(self._mode_parse(current))
-        units = UNITS[mode]
-        if isinstance(newval, self.InputRange):
-            newval = newval.value
-        else:
-            newval = assume_units(newval, units).rescale(units).magnitude
-        self.sendcmd("CONF:{} {}".format(mode.value, newval))
+        raise NotImplementedError
 
     @property
     def relative(self):
@@ -251,7 +302,7 @@ class HpmlMultimeter(Multimeter):
         The Trigger (TRG) command triggers the device if BUS is the selected
         trigger source, otherwise, *TRG is ignored
         """
-        self.sendcmd('TRIG SGL')
+        self.sendcmd('TRIG 1')
 
     def measure(self, mode=None):
         """
@@ -276,9 +327,10 @@ class HpmlMultimeter(Multimeter):
             raise TypeError("Mode must be specified as a SCPIMultimeter.Mode "
                             "value, got {} instead.".format(type(mode)))
         # pylint: disable=no-member
+
+        # Should enable trigger function
         self.trigger()
 
-        # Should make this a field
         value = self.read(size=8, encoding='IEEE-754/64')
 
         return value * UNITS[mode]
