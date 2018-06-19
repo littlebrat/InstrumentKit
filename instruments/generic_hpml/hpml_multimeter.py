@@ -9,9 +9,6 @@ from instruments.util_fns import assume_units, enum_property, int_property
 from instruments.abstract_instruments import Multimeter
 
 
-def parse_response(response):
-    return response
-
 class HpmlMultimeter(Multimeter):
 
     """
