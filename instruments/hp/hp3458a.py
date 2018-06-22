@@ -64,6 +64,7 @@ class HP3458a(instruments.generic_hpml.hpml_multimeter.HpmlMultimeter):
         self.display = self.ToggableMode.off
         self.azero = self.ToggableMode.off
         self.tarm_mode = self.TriggerMode.syn
+        self.terminator = '\r'
 
 
 
@@ -73,5 +74,5 @@ if __name__ == '__main__':
 
     import time
     s = time.time()
-    [multimeter.measure() for _ in range(20)]
+    [print(multimeter.measure()) for _ in range(20)]
     print((time.time() - s)/ 20)
