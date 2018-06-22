@@ -206,8 +206,17 @@ class AbstractCommunicator(with_metaclass(abc.ABCMeta, object)):
         if encoding == 'utf-8':
             return self.read_raw(size).decode(encoding)
 
+        elif encoding == 'SI/16':
+            return struct.unpack('>h', self.read_raw(size))[0]
+
+        elif encoding == 'DI/32':
+            return struct.unpack('>l', self.read_raw(size))[0]
+
         elif encoding == 'IEEE-754/64':
             return struct.unpack('>d', self.read_raw(size))[0]
+
+        elif encoding == 'IEEE-754/32':
+            return struct.unpack('>f', self.read_raw(size))[0]
 
         else:
             raise NotImplementedError

@@ -5,7 +5,7 @@ import enum
 import quantities
 
 
-from instruments.util_fns import assume_units, enum_property, int_property
+from instruments.util_fns import enum_property
 from instruments.abstract_instruments import Multimeter
 
 
@@ -47,7 +47,6 @@ class HpmlMultimeter(Multimeter):
         sub_sampling_ac = 13
         sub_sampling_dc = 14
 
-
     class Format(enum.Enum):
         """
 
@@ -68,7 +67,6 @@ class HpmlMultimeter(Multimeter):
         # Double Real-(IEEE-754) 64 bits, (8 bytes per reading)
         dreal = 5
 
-
     class ToggableMode(enum.Enum):
         """
         Toggable modes (ON/OFF)
@@ -76,14 +74,13 @@ class HpmlMultimeter(Multimeter):
         off = 0
         on = 1
 
-
     class TriggerMode(enum.Enum):
         """
         Valid trigger sources for HPML Multimeters.
 
         """
         # Used with: TARM, TRIG, NRDGS
-        ## Occurs automatically (whenever required)
+        # Occurs automatically (whenever required)
         auto = 1
 
         # Occurs on negative edge transition on the multimeter's external trigger input
@@ -101,12 +98,27 @@ class HpmlMultimeter(Multimeter):
         hold = 4
 
         # Used with: TRIG, NRDGS
-        ## Occurs when the power line voltage crosses zero volts
+        # Occurs when the power line voltage crosses zero volts
         level = 7
 
-        ## Occurs when the specified voltage is reached on the specified slope of the input signa
+        # Occurs when the specified voltage is reached on the specified slope of the input signa
         line = 8
 
+    class CalMode(enum.Enum):
+        """
+        Instructs the multimeter to perform one or all of its self calibrations.
+        """
+        # Performs the DCV, OHMS, and AC autocals (11 minutes)
+        all = 0
+
+        # DC voltage gain and offset (1 minute)
+        dcv = 1
+
+        # ACV flatness, gain, and offset (1 minute)
+        ac = 2
+
+        # OHMS gain and offset (10 minutes)
+        ohms = 4
 
     class InputRange(enum.Enum):
 
@@ -154,43 +166,43 @@ class HpmlMultimeter(Multimeter):
         enum=Format,
         input_decoration=lambda x: int(x),
         doc="""
-                Gets/sets the memory format for the multimeter.
-                Clears reading memory and designates the storage format for new readings.
+            Gets/sets the memory format for the multimeter.
+            Clears reading memory and designates the storage format for new readings.
 
-                Example usage:
+            Example usage:
 
-                >>> dmm.mformat = dmm.Format.dreal
+            >>> dmm.mformat = dmm.Format.dreal
 
-                :type: `~HpmlMultimeter.Format`
-                """)
+            :type: `~HpmlMultimeter.Format`
+            """)
 
     tarm_mode = enum_property(
         command="TARM",
         enum=TriggerMode,
         input_decoration=lambda x: int(x),
         doc="""
-                Defines the event that enables (arms) the trigger event (TRIG command). 
-                You can also use this command to perform multiple measurement cycles.
+            Defines the event that enables (arms) the trigger event (TRIG command). 
+            You can also use this command to perform multiple measurement cycles.
 
-                Example usage:
+            Example usage:
 
-                >>> dmm.tarm_mode = dmm.TriggerMode.syn
+            >>> dmm.tarm_mode = dmm.TriggerMode.syn
 
-                :type: `~HpmlMultimeter.TriggerMode`
-                """)
+            :type: `~HpmlMultimeter.TriggerMode`
+            """)
 
     trigger_mode = enum_property(
         command="TRIG",
         enum=TriggerMode,
         input_decoration=lambda x: int(x),
         doc="""
-                Gets/sets the Multimeter trigger mode.
+            Gets/sets the Multimeter trigger mode.
 
-                Example usage:
+            Example usage:
 
-                >>> dmm.trigger_mode = dmm.TriggerMode.external
+            >>> dmm.trigger_mode = dmm.TriggerMode.external
 
-                :type: `~HpmlMultimeter.TriggerMode`
+            :type: `~HpmlMultimeter.TriggerMode`
             """)
 
     azero = enum_property(
@@ -198,14 +210,14 @@ class HpmlMultimeter(Multimeter):
         enum=ToggableMode,
         input_decoration=lambda x: int(x),
         doc="""
-                Enables or disables the autozero function. The autozero function
-                applies only to DC voltage, DC current, and resistance measurements.
+            Enables or disables the autozero function. The autozero function
+            applies only to DC voltage, DC current, and resistance measurements.
 
-                Example usage:
+            Example usage:
 
-                >>> dmm.azero = dmm.ToggableMode.off
+            >>> dmm.azero = dmm.ToggableMode.off
 
-                :type: `~HpmlMultimeter.ToggableMode`
+            :type: `~HpmlMultimeter.ToggableMode`
             """)
 
     display = enum_property(
@@ -213,13 +225,27 @@ class HpmlMultimeter(Multimeter):
         enum=ToggableMode,
         input_decoration=lambda x: int(x),
         doc="""
-                Turns the display ON/OFF
+            Turns the display ON/OFF.
 
-                Example usage:
+            Example usage:
 
-                >>> dmm.display = dmm.ToggableMode.off
+            >>> dmm.display = dmm.ToggableMode.off
 
-                :type: `~HpmlMultimeter.ToggableMode`
+            :type: `~HpmlMultimeter.ToggableMode`
+            """)
+
+    acal = enum_property(
+        command="INPUT BUF; ACAL",
+        enum=CalMode,
+        writeonly=True,
+        doc="""
+            Calibrate a mode of the multimeter.
+
+            Example usage:
+
+            >>> dmm.acal = dmm.CalMode.dcv
+
+            :type: `~HpmlMultimeter.CalMode`
             """)
 
     @property
@@ -266,10 +292,9 @@ class HpmlMultimeter(Multimeter):
 
         :rtype: `bool`
         """
-        result = self.write('INPUT BUF; TEST')
+        result = self.sendcmd('INPUT BUF; TEST')
         # Should sleep here?
         return result
-
 
     # BASIC COMMANDS ##
 
@@ -278,7 +303,6 @@ class HpmlMultimeter(Multimeter):
         Sets the multimeter to the power-on state without cycling power.
         """
         self.sendcmd('RESET')
-
 
     def clear(self):
         """
@@ -301,7 +325,7 @@ class HpmlMultimeter(Multimeter):
         """
         self.sendcmd('TRIG 1')
 
-    def measure(self, mode=None):
+    def measure(self, mode=None, read_config=None):
         """
         Instruct the multimeter to perform a one time measurement. The
         instrument will use default parameters for the requested measurement.
@@ -323,12 +347,16 @@ class HpmlMultimeter(Multimeter):
         if not isinstance(mode, HpmlMultimeter.Mode):
             raise TypeError("Mode must be specified as a SCPIMultimeter.Mode "
                             "value, got {} instead.".format(type(mode)))
+
+        if read_config is None:
+            read_config = FORMAT_CONFIG[self.oformat]
+
         # pylint: disable=no-member
 
         # Should enable trigger function
         self.trigger()
 
-        value = self.read(size=8, encoding='IEEE-754/64')
+        value = self.read(size=read_config[0], encoding=read_config[1])
 
         return value * UNITS[mode]
 
@@ -351,6 +379,16 @@ class HpmlMultimeter(Multimeter):
         """
         return int(val.split(',')[0])
 
+
+FORMAT_CONFIG = {
+    HpmlMultimeter.Format.ascii: (-1, 'utf-8'),  #TODO DOES NOW WORK
+    HpmlMultimeter.Format.sint: (2, 'SI/16'),
+    HpmlMultimeter.Format.dint: (4, 'DI/32'),
+    HpmlMultimeter.Format.sreal: (4, 'IEEE-754/32'),
+    HpmlMultimeter.Format.dreal: (8, 'IEEE-754/64'),
+}
+
+
 UNITS = {
     HpmlMultimeter.Mode.voltage_dc:  quantities.volt,
     HpmlMultimeter.Mode.voltage_ac:  quantities.volt,
@@ -361,4 +399,3 @@ UNITS = {
     HpmlMultimeter.Mode.frequency:   quantities.hertz,
     HpmlMultimeter.Mode.period:      quantities.second,
 }
-

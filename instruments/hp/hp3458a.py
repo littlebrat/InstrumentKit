@@ -57,22 +57,17 @@ class HP3458a(instruments.generic_hpml.hpml_multimeter.HpmlMultimeter):
     def __init__(self, filelike):
         super().__init__(filelike)
         # TODO HOW TO MODIFY READ TERMINATOR
-        #self.read_terminator = '\r'
+        self.terminator = '\r'
         self.tarm_mode = self.TriggerMode.hold
-        self.mformat = self.Format.dreal
-        self.oformat = self.Format.dreal
+        self.mformat = self.Format.sreal
+        self.oformat = self.Format.sreal
         self.display = self.ToggableMode.off
         self.azero = self.ToggableMode.off
         self.tarm_mode = self.TriggerMode.syn
-        self.terminator = '\r'
-
 
 
 if __name__ == '__main__':
     multimeter = HP3458a.open_visa('GPIB0::23::INSTR')
     multimeter.mode = multimeter.Mode.current_dc
 
-    import time
-    s = time.time()
-    [print(multimeter.measure()) for _ in range(20)]
-    print((time.time() - s)/ 20)
+    print(multimeter.measure())
